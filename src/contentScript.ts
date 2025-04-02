@@ -12,6 +12,35 @@
 // See https://developer.chrome.com/extensions/content_scripts
 
 // Log `title` of current active web page
+
+import { pipeline } from '@xenova/transformers';
+
+let classifier: any = null;
+
+// Initialize the model (lazy load)
+async function getClassifier() {
+  if (!classifier) {
+    classifier = await pipeline(
+      'text-classification', 
+      'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
+    );
+  }
+  return classifier;
+}
+
+const getResult = async () => {
+  const classifier = await getClassifier();
+  // const result = await classifier("Hello we are gonna play now");
+  // console.log({result});
+  return "Hello we are gonna ";
+};
+
+getResult().then((data) => {
+  console.log({data})
+});
+
+
+
 const pageTitle: string =
   document.head.getElementsByTagName('title')[0].innerHTML;
 console.log(
@@ -27,7 +56,12 @@ chrome.runtime.sendMessage(
     },
   },
   (response) => {
-    console.log(response.message);
+    console.log("----");
+    console.log(response);
+    // response.then((data: any) => {
+    //   console.log(data);
+    // })
+    // console.log(resule)
   }
 );
 
@@ -42,3 +76,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   sendResponse({});
   return true;
 });
+
+
+document.addEventListener("click", async () => {
+  const repsonse = await getResult();
+  console.log({repsonse})
+})
