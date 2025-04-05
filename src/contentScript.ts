@@ -85,17 +85,105 @@ document.addEventListener("click", async () => {
 
 
 
-// In contentScript.ts
-const workerCode = `
-  importScripts('${chrome.runtime.getURL('classifierWorker.js')}');
-`;
+// // In contentScript.ts
+// const workerCode = `
+//   importScripts('${chrome.runtime.getURL('classifierWorker.js')}');
+// `;
 
-const blob = new Blob([workerCode], { type: 'application/javascript' });
-const workerUrl = URL.createObjectURL(blob);
-const worker = new Worker(workerUrl);
+// const blob = new Blob([workerCode], { type: 'application/javascript' });
+// const workerUrl = URL.createObjectURL(blob);
+// const worker = new Worker(workerUrl);
 
-// Clean up when done
-window.addEventListener('unload', () => {
-  worker.terminate();
-  URL.revokeObjectURL(workerUrl);
-});
+// // Clean up when done
+// window.addEventListener('unload', () => {
+//   worker.terminate();
+//   URL.revokeObjectURL(workerUrl);
+// });
+
+
+class WorkerManager {
+  private worker: Worker;
+  private pendingRequests: Record<string, (response: any) => void> = {};
+  
+  constructor() {
+    // Create worker using blob URL approach
+    const workerCode = `
+      importScripts('${chrome.runtime.getURL('classifierWorker.js')}');
+    `;
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    this.worker = new Worker(URL.createObjectURL(blob));
+    
+    // Setup message handler
+    this.worker.onmessage = (e) => {
+      console.log('[Content Script] Received worker message:', e.data);
+      
+      // Handle response
+      if (e.data.requestId && this.pendingRequests[e.data.requestId]) {
+        this.pendingRequests[e.data.requestId](e.data);
+        delete this.pendingRequests[e.data.requestId];
+      }
+    };
+    
+    // Cleanup on page unload
+    window.addEventListener('unload', () => {
+      this.worker.terminate();
+    });
+  }
+  
+  // Send message with response handling
+  public sendMessage(message: any): Promise<any> {
+    const requestId = Math.random().toString(36).substring(2, 9);
+    
+    return new Promise((resolve) => {
+      this.pendingRequests[requestId] = resolve;
+      this.worker.postMessage({
+        ...message,
+        requestId
+      });
+    });
+  }
+  
+  // Test methods
+  public async ping(): Promise<number> {
+    const response = await this.sendMessage({
+      type: 'PING'
+    });
+    return response.timestamp;
+  }
+  
+  public async processData(data: any): Promise<any> {
+    return this.sendMessage({
+      type: 'TEST_REQUEST',
+      payload: data
+    });
+  }
+}
+
+// Initialize and test
+const workerManager = new WorkerManager();
+
+// Test communication
+(async () => {
+  try {
+    // Simple ping test
+    const pongTime = await workerManager.ping();
+    console.log('Ping-Pong latency:', Date.now() - pongTime, 'ms');
+    
+    // Data processing test
+    const testData = { sample: 'data', values: [1, 2, 3] };
+    const result = await workerManager.processData(testData);
+    console.log('Processed data:', result);
+    
+    // Multiple parallel requests
+    const promises = [
+      workerManager.processData('first'),
+      workerManager.processData('second'),
+      workerManager.processData('third')
+    ];
+    
+    const allResults = await Promise.all(promises);
+    console.log('All results:', allResults);
+  } catch (error) {
+    console.error('Worker communication error:', error);
+  }
+})();
