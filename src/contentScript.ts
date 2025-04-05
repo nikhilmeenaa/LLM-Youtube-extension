@@ -82,3 +82,20 @@ document.addEventListener("click", async () => {
   const repsonse = await getResult();
   console.log({repsonse})
 })
+
+
+
+// In contentScript.ts
+const workerCode = `
+  importScripts('${chrome.runtime.getURL('classifierWorker.js')}');
+`;
+
+const blob = new Blob([workerCode], { type: 'application/javascript' });
+const workerUrl = URL.createObjectURL(blob);
+const worker = new Worker(workerUrl);
+
+// Clean up when done
+window.addEventListener('unload', () => {
+  worker.terminate();
+  URL.revokeObjectURL(workerUrl);
+});
