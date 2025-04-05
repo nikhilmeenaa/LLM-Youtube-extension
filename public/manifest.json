@@ -9,6 +9,10 @@
     "48": "icons/icon_48.png",
     "128": "icons/icon_128.png"
   },
+  "web_accessible_resources": [{
+    "resources": ["classifierWorker.js"],
+    "matches": ["<all_urls>"]
+  }],
   "background": {
     "service_worker": "background.js"
   },

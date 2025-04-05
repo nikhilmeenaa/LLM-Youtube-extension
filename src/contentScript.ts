@@ -29,7 +29,7 @@ async function getClassifier() {
 }
 
 const getResult = async () => {
-  const classifier = await getClassifier();
+  // const classifier = await getClassifier();
   // const result = await classifier("Hello we are gonna play now");
   // console.log({result});
   return "Hello we are gonna ";
@@ -47,23 +47,23 @@ console.log(
   `Page title is: '${pageTitle}' - evaluated by Chrome extension's 'contentScript.js' file`
 );
 
-// Communicate with background file by sending a message
-chrome.runtime.sendMessage(
-  {
-    type: 'GREETINGS',
-    payload: {
-      message: 'Hello, my name is Con. I am from ContentScript.',
-    },
-  },
-  (response) => {
-    console.log("----");
-    console.log(response);
-    // response.then((data: any) => {
-    //   console.log(data);
-    // })
-    // console.log(resule)
+// Using promise-based approach
+const sendMessage = async () => {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'GREETINGS',
+      payload: {
+        message: 'Hello from ContentScript'
+      }
+    });
+    
+    console.log("Received response:", response);
+  } catch (error) {
+    console.error("Error in communication:", error);
   }
-);
+};
+
+sendMessage();
 
 // Listen for message
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

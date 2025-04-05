@@ -12,44 +12,48 @@ let classifier: any = null;
 // Initialize the model (lazy load)
 async function getClassifier() {
   if (!classifier) {
-    classifier = await pipeline(
-      'text-classification', 
-      'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
-    );
+    classifier =  await pipeline('zero-shot-classification', 'Xenova/nli-deberta-v3-small');
   }
   return classifier;
 }
 
 const getResult = async () => {
   const classifier = await getClassifier();
-  const result = await classifier("Hello we are gonna play now");
+  const post = `We're looking for a senior frontend engineer to join our team in Berlin. Apply now!`;
+  const result = await classifier(post, {
+    candidate_labels: ['hiring', 'not hiring'],
+  });
   console.log({result});
   return result;
 };
 
 async function doAsyncTask() {
-  // Your async operations here
-  // await someAsyncOperation();
   return "Task completed";
 }
 
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'GREETINGS') {
-    const message: string = `Hi ${
-      sender.tab ? 'Con' : 'Pop'
-    }, my name is Bac. I am from Background. It's great to hear from you.`;
-
-    // Log message coming from the `request` parameter
     console.log(request.payload.message);
-    // Send a response message
-    // doAsyncTask().then((result) => {
-    //   console.log({result})
-    //   sendResponse({
-    //     message,
-    //   });
-    // })
-    // sendResponse(doAsyncTask());
-    sendResponse(message);
-    return true;
+    
+    // Immediately declare we'll respond asynchronously
+    const keepAlive = true;
+    
+    // Perform async work
+    getResult().then(result => {
+      try {
+        sendResponse({ success: true, data: result });
+      } catch (error) {
+        console.error("Failed to send response:", error);
+      }
+    }).catch(error => {
+      try {
+        sendResponse({ success: false, error: error.message });
+      } catch (sendError) {
+        console.error("Failed to send error response:", sendError);
+      }
+    });
+    
+    // Return true to keep the message port open
+    return keepAlive;
   }
 });
