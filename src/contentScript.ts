@@ -116,6 +116,8 @@ class WorkerManager {
     // Setup message handler
     this.worker.onmessage = (e) => {
       console.log('[Content Script] Received worker message:', e.data);
+
+      console.log(e)
       
       // Handle response
       if (e.data.requestId && this.pendingRequests[e.data.requestId]) {
